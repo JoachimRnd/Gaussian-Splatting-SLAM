@@ -13,7 +13,7 @@ dependencies:
   - torchvision=0.13.1
   - tqdm
   - pip:
-    - submodules/simple-knn
+    - git+https://github.com/JoachimRnd/simple-knn-Gaussian-SLAM.git@2c8773c664b746e44bca5dc1d5064d737b1bfc87
     - submodules/diff-gaussian-rasterization
     - opencv-python==4.8.1.78
     - munch
