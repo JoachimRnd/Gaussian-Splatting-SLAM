@@ -243,6 +243,7 @@ if __name__ == "__main__":
             documents = yaml.dump(config, file)
         Log("saving results in " + save_dir)
         run = wandb.init(
+            entity="3DGS-thesis",
             project="MonoGS",
             name=f"{tmp}_{current_datetime}",
             config=config,
