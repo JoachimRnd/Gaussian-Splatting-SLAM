@@ -1,0 +1,22 @@
+# Gaussian Splatting SLAM
+torch==1.13.1+cu116
+torchvision==0.14.1+cu116
+open3d==0.17.0
+matplotlib
+ninja
+wandb
+trimesh
+torchmetrics
+tqdm
+opencv-python
+plyfile
+torchaudio==0.13.1
+munch
+evo==1.11.0
+imgviz
+PyOpenGL
+glfw
+PyGLM
+lpips
+rich
+ruff

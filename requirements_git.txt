@@ -1,0 +1,2 @@
+git+https://gitlab.inria.fr/bkerbl/simple-knn.git@86710c2d4b46680c02301765dd79e465819c8f19
+git+https://github.com/rmurai0610/diff-gaussian-rasterization-w-pose.git@43e21bff91cd24986ee3dd52fe0bb06952e50ec7
