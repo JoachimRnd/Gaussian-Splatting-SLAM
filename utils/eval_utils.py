@@ -11,10 +11,10 @@ from evo.core.trajectory import PosePath3D, PoseTrajectory3D
 from evo.tools import plot
 from evo.tools.plot import PlotMode
 from evo.tools.settings import SETTINGS
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 import wandb
@@ -50,20 +50,20 @@ def evaluate_evo(poses_gt, poses_est, plot_dir, label, monocular=False):
         json.dump(ape_stats, f, indent=4)
 
     plot_mode = evo.tools.plot.PlotMode.xy
-    fig = plt.figure()
-    ax = evo.tools.plot.prepare_axis(fig, plot_mode)
-    ax.set_title(f"ATE RMSE: {ape_stat}")
-    evo.tools.plot.traj(ax, plot_mode, traj_ref, "--", "gray", "gt")
-    evo.tools.plot.traj_colormap(
-        ax,
-        traj_est_aligned,
-        ape_metric.error,
-        plot_mode,
-        min_map=ape_stats["min"],
-        max_map=ape_stats["max"],
-    )
-    ax.legend()
-    plt.savefig(os.path.join(plot_dir, "evo_2dplot_{}.png".format(str(label))), dpi=90)
+    # fig = plt.figure()
+    # ax = evo.tools.plot.prepare_axis(fig, plot_mode)
+    # ax.set_title(f"ATE RMSE: {ape_stat}")
+    # evo.tools.plot.traj(ax, plot_mode, traj_ref, "--", "gray", "gt")
+    # evo.tools.plot.traj_colormap(
+    #     ax,
+    #     traj_est_aligned,
+    #     ape_metric.error,
+    #     plot_mode,
+    #     min_map=ape_stats["min"],
+    #     max_map=ape_stats["max"],
+    # )
+    # ax.legend()
+    # plt.savefig(os.path.join(plot_dir, "evo_2dplot_{}.png".format(str(label))), dpi=90)
 
     return ape_stat
 
