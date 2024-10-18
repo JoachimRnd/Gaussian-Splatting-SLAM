@@ -241,7 +241,7 @@ if __name__ == "__main__":
             documents = yaml.dump(config, file)
         Log("saving results in " + save_dir)
         run = wandb.init(
-            project="MonoGS",
+            project="3DGS-thesis",
             name=f"{tmp}_{current_datetime}",
             config=config,
             mode=None if config["Results"]["use_wandb"] else "disabled",
