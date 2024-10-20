@@ -1,0 +1,4 @@
+inherit_from: "configs/mono/replica/base_config.yaml"
+Dataset:
+  dataset_path: "../Datasets/Replica/office2/"
+  single_thread: True
