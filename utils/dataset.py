@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import torch
 import trimesh
+import json
 from PIL import Image
 
 from gaussian_splatting.utils.graphics_utils import focal2fov
@@ -15,6 +16,47 @@ try:
 except Exception:
     pass
 
+class SHIRTParser:
+    def __init__(self, input_folder):
+        self.input_folder = input_folder
+        self.color_paths = sorted(glob.glob(f"{self.input_folder}/images/img*.jpg"))
+        self.n_img = len(self.color_paths)
+        # Take the first three folders to access the pose file
+        self.load_poses(f"{'/'.join(self.input_folder.split('/')[:3])}/{'roe1.json' if 'roe1' in self.input_folder else 'roe2.json' if 'roe2' in self.input_folder else ''}")
+
+
+    def load_poses(self, path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+
+        frames = []
+        self.poses = []
+                
+        # for frame in data:
+        for i in range(self.n_img):
+            frame = data[i]
+            # Extract rotation and translation
+            quat = frame['q_vbs2tango_true']
+            trans = frame['r_Vo2To_vbs_true']
+            
+            # JPL to Hamilton format (x, y, z, w) TODO check if this is correct
+            quat = [quat[1], quat[2], quat[3], quat[0]]
+            # Convert quaternion to transformation matrix
+            T = trimesh.transformations.quaternion_matrix(quat)
+            # Add translation part in matrix
+            T[:3, 3] = trans 
+            # Invert the pose
+            pose = np.linalg.inv(T)
+            self.poses.append(pose)
+            
+            frame = {
+                "file_path": self.color_paths[i],
+                "transform_matrix": pose.tolist(),
+            }
+
+            frames.append(frame)
+            
+        self.frames = frames
 
 class ReplicaParser:
     def __init__(self, input_folder):
@@ -518,6 +560,58 @@ class RealsenseDataset(BaseDataset):
 
         return image, depth, pose
 
+class SHIRTDataset(MonocularDataset):
+    def __init__(self, args, path, config):
+        super().__init__(args, path, config)
+        dataset_path = config["Dataset"]["dataset_path"]
+        parser = SHIRTParser(dataset_path)
+        self.num_imgs = parser.n_img
+        self.color_paths = parser.color_paths
+        self.poses = parser.poses
+
+        with open(os.path.join('/'.join(dataset_path.split('/')[:2]), '/camera.json'), 'r') as f:
+            calibration_data = json.load(f)
+        
+        self.width = calibration_data['Nu']
+        self.height = calibration_data['Nv']
+        self.fx = calibration_data['cameraMatrix'][0][0]
+        self.fy = calibration_data['cameraMatrix'][1][1]
+        self.cx = calibration_data['cameraMatrix'][0][2]
+        self.cy = calibration_data['cameraMatrix'][1][2]
+        self.fovx = focal2fov(self.fx, self.width)
+        self.fovy = focal2fov(self.fy, self.height)
+        self.K = np.array(calibration_data['cameraMatrix'])
+        
+        self.distorted = True
+        self.dist_coeffs = np.array(calibration_data['distCoeffs'])
+        self.map1x, self.map1y = cv2.initUndistortRectifyMap(
+            self.K,
+            self.dist_coeffs,
+            np.eye(3),
+            self.K,
+            (self.width, self.height),
+            cv2.CV_32FC1,
+        )
+        self.has_depth = False
+
+    def __getitem__(self, idx):
+        color_path = self.color_paths[idx]
+        pose = self.poses[idx]
+
+        image = np.array(Image.open(color_path))
+
+        if self.distorted:
+            image = cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
+
+        image = (
+            torch.from_numpy(image / 255.0)
+            .clamp(0.0, 1.0)
+            .permute(2, 0, 1)
+            .to(device=self.device, dtype=self.dtype)
+        )
+        pose = torch.from_numpy(pose).to(device=self.device)
+        return image, None, pose
+
 
 def load_dataset(args, path, config):
     if config["Dataset"]["type"] == "tum":
@@ -528,5 +622,7 @@ def load_dataset(args, path, config):
         return EurocDataset(args, path, config)
     elif config["Dataset"]["type"] == "realsense":
         return RealsenseDataset(args, path, config)
+    elif config["Dataset"]["type"] == "shirt":
+        return SHIRTDataset(args, path, config)
     else:
         raise ValueError("Unknown dataset type")
