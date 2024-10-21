@@ -1,0 +1,4 @@
+inherit_from: "configs/mono/shirt/base_config.yaml"
+Dataset:
+  dataset_path: "../Datasets/Shirt/roe1/lightbox"
+  single_thread: True

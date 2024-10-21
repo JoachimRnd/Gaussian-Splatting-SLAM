@@ -467,6 +467,14 @@ class EurocDataset(StereoDataset):
         self.color_paths_r = parser.color_paths_r
         self.poses = parser.poses
 
+class SHIRTDataset(MonocularDataset):
+    def __init__(self, args, path, config):
+        super().__init__(args, path, config)
+        dataset_path = config["Dataset"]["dataset_path"]
+        parser = SHIRTParser(dataset_path)
+        self.num_imgs = parser.n_img
+        self.color_paths = parser.color_paths
+        self.poses = parser.poses
 
 class RealsenseDataset(BaseDataset):
     def __init__(self, args, path, config):
@@ -559,59 +567,6 @@ class RealsenseDataset(BaseDataset):
         )
 
         return image, depth, pose
-
-class SHIRTDataset(MonocularDataset):
-    def __init__(self, args, path, config):
-        super().__init__(args, path, config)
-        dataset_path = config["Dataset"]["dataset_path"]
-        parser = SHIRTParser(dataset_path)
-        self.num_imgs = parser.n_img
-        self.color_paths = parser.color_paths
-        self.poses = parser.poses
-
-        with open(os.path.join('/'.join(dataset_path.split('/')[:2]), '/camera.json'), 'r') as f:
-            calibration_data = json.load(f)
-        
-        self.width = calibration_data['Nu']
-        self.height = calibration_data['Nv']
-        self.fx = calibration_data['cameraMatrix'][0][0]
-        self.fy = calibration_data['cameraMatrix'][1][1]
-        self.cx = calibration_data['cameraMatrix'][0][2]
-        self.cy = calibration_data['cameraMatrix'][1][2]
-        self.fovx = focal2fov(self.fx, self.width)
-        self.fovy = focal2fov(self.fy, self.height)
-        self.K = np.array(calibration_data['cameraMatrix'])
-        
-        self.distorted = True
-        self.dist_coeffs = np.array(calibration_data['distCoeffs'])
-        self.map1x, self.map1y = cv2.initUndistortRectifyMap(
-            self.K,
-            self.dist_coeffs,
-            np.eye(3),
-            self.K,
-            (self.width, self.height),
-            cv2.CV_32FC1,
-        )
-        self.has_depth = False
-
-    def __getitem__(self, idx):
-        color_path = self.color_paths[idx]
-        pose = self.poses[idx]
-
-        image = np.array(Image.open(color_path))
-
-        if self.distorted:
-            image = cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
-
-        image = (
-            torch.from_numpy(image / 255.0)
-            .clamp(0.0, 1.0)
-            .permute(2, 0, 1)
-            .to(device=self.device, dtype=self.dtype)
-        )
-        pose = torch.from_numpy(pose).to(device=self.device)
-        return image, None, pose
-
 
 def load_dataset(args, path, config):
     if config["Dataset"]["type"] == "tum":
