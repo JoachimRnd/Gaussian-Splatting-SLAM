@@ -265,7 +265,7 @@ class MonocularDataset(BaseDataset):
             [[self.fx, 0.0, self.cx], [0.0, self.fy, self.cy], [0.0, 0.0, 1.0]]
         )
         # distortion parameters
-        self.disorted = calibration["distorted"]
+        self.distorted = calibration["distorted"]
         self.dist_coeffs = np.array(
             [
                 calibration["k1"],
@@ -300,10 +300,10 @@ class MonocularDataset(BaseDataset):
         color_path = self.color_paths[idx]
         pose = self.poses[idx]
 
-        image = np.array(Image.open(color_path))
+        image = np.array(Image.open(color_path).convert('RGB'))
         depth = None
 
-        if self.disorted:
+        if self.distorted:
             image = cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
 
         if self.has_depth:
@@ -379,7 +379,7 @@ class StereoDataset(BaseDataset):
         self.Rmat_r = np.array(calibration["cam1"]["R"]["data"]).reshape(3, 3)
 
         # distortion parameters
-        self.disorted = calibration["distorted"]
+        self.distorted = calibration["distorted"]
         self.dist_coeffs = np.array(
             [cam0raw["k1"], cam0raw["k2"], cam0raw["p1"], cam0raw["p2"], cam0raw["k3"]]
         )
@@ -412,7 +412,7 @@ class StereoDataset(BaseDataset):
         image = cv2.imread(color_path, 0)
         image_r = cv2.imread(color_path_r, 0)
         depth = None
-        if self.disorted:
+        if self.distorted:
             image = cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
             image_r = cv2.remap(image_r, self.map1x_r, self.map1y_r, cv2.INTER_LINEAR)
         stereo = cv2.StereoSGBM_create(minDisparity=0, numDisparities=64, blockSize=20)
@@ -521,7 +521,7 @@ class RealsenseDataset(BaseDataset):
             [[self.fx, 0.0, self.cx], [0.0, self.fy, self.cy], [0.0, 0.0, 1.0]]
         )
 
-        self.disorted = True
+        self.distorted = True
         self.dist_coeffs = np.asarray(self.rgb_intrinsics.coeffs)
         self.map1x, self.map1y = cv2.initUndistortRectifyMap(
             self.K, self.dist_coeffs, np.eye(3), self.K, (self.w, self.h), cv2.CV_32FC1
@@ -556,7 +556,7 @@ class RealsenseDataset(BaseDataset):
 
         image = np.asanyarray(rgb_frame.get_data())
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        if self.disorted:
+        if self.distorted:
             image = cv2.remap(image, self.map1x, self.map1y, cv2.INTER_LINEAR)
 
         image = (
