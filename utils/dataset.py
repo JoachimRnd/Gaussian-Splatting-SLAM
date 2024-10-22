@@ -22,7 +22,7 @@ class SHIRTParser:
         self.color_paths = sorted(glob.glob(f"{self.input_folder}/images/img*.jpg"))
         self.n_img = len(self.color_paths)
         # Take the first three folders to access the pose file
-        self.load_poses(f"{'/'.join(self.input_folder.split('/')[:3])}/{'roe1.json' if 'roe1' in self.input_folder else 'roe2.json' if 'roe2' in self.input_folder else ''}")
+        self.load_poses(f"{'/'.join(self.input_folder.split('/')[:4])}/{'roe1.json' if 'roe1' in self.input_folder else 'roe2.json' if 'roe2' in self.input_folder else ''}")
 
 
     def load_poses(self, path):
