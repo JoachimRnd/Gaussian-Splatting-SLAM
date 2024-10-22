@@ -330,6 +330,8 @@ class FrontEnd(mp.Process):
         toc = torch.cuda.Event(enable_timing=True)
 
         while True:
+            Log(f"Frontend : Processing frame {cur_frame_idx}")
+            
             if self.q_vis2main.empty():
                 if self.pause:
                     continue
@@ -418,6 +420,7 @@ class FrontEnd(mp.Process):
                     curr_visibility,
                     self.occ_aware_visibility,
                 )
+                Log(f"Frontend : Keyframe decision at frame {cur_frame_idx}: {create_kf}")
                 if len(self.current_window) < self.window_size:
                     union = torch.logical_or(
                         curr_visibility, self.occ_aware_visibility[last_keyframe_idx]
@@ -433,6 +436,7 @@ class FrontEnd(mp.Process):
                 if self.single_thread:
                     create_kf = check_time and create_kf
                 if create_kf:
+                    Log(f"Frontend : Adding keyframe at frame {cur_frame_idx}")
                     self.current_window, removed = self.add_to_window(
                         cur_frame_idx,
                         curr_visibility,
@@ -442,7 +446,7 @@ class FrontEnd(mp.Process):
                     if self.monocular and not self.initialized and removed is not None:
                         self.reset = True
                         Log(
-                            "Keyframes lacks sufficient overlap to initialize the map, resetting."
+                            "Frontend : Keyframes lacks sufficient overlap to initialize the map, resetting."
                         )
                         continue
                     depth_map = self.add_new_keyframe(
@@ -454,6 +458,7 @@ class FrontEnd(mp.Process):
                     self.request_keyframe(
                         cur_frame_idx, viewpoint, self.current_window, depth_map
                     )
+                    Log(f"Frontend : Requested mapping for keyframe at frame {cur_frame_idx}")
                 else:
                     self.cleanup(cur_frame_idx)
                 cur_frame_idx += 1
@@ -464,7 +469,7 @@ class FrontEnd(mp.Process):
                     and create_kf
                     and len(self.kf_indices) % self.save_trj_kf_intv == 0
                 ):
-                    Log("Evaluating ATE at frame: ", cur_frame_idx)
+                    Log("Frontend : Mapping Done. Evaluating ATE at frame: ", cur_frame_idx)
                     eval_ate(
                         self.cameras,
                         self.kf_indices,

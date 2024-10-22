@@ -251,6 +251,8 @@ class BaseDataset(torch.utils.data.Dataset):
 class MonocularDataset(BaseDataset):
     def __init__(self, args, path, config):
         super().__init__(args, path, config)
+        print(f"Number of images loaded: {self.num_imgs}")
+
         calibration = config["Dataset"]["Calibration"]
         # Camera prameters
         self.fx = calibration["fx"]

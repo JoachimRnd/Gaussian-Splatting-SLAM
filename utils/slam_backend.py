@@ -136,10 +136,11 @@ class BackEnd(mp.Process):
                 self.gaussians.optimizer.zero_grad(set_to_none=True)
 
         self.occ_aware_visibility[cur_frame_idx] = (n_touched > 0).long()
-        Log("Initialized map")
+        Log("Backend : Initialized map")
         return render_pkg
 
     def map(self, current_window, prune=False, iters=1):
+        Log(f"Backend : mapping current window: {current_window}")
         if len(current_window) == 0:
             return
 
@@ -270,7 +271,7 @@ class BackEnd(mp.Process):
                                 )
                         if not self.initialized:
                             self.initialized = True
-                            Log("Initialized SLAM")
+                            Log("Backend : Initialized SLAM")
                         # # make sure we don't split the gaussians, break here.
                     return False
 
@@ -300,7 +301,7 @@ class BackEnd(mp.Process):
                 if (self.iteration_count % self.gaussian_reset) == 0 and (
                     not update_gaussian
                 ):
-                    Log("Resetting the opacity of non-visible Gaussians")
+                    Log("Backend : Resetting the opacity of non-visible Gaussians")
                     self.gaussians.reset_opacity_nonvisible(visibility_filter_acm)
                     gaussian_split = True
 
@@ -318,7 +319,7 @@ class BackEnd(mp.Process):
         return gaussian_split
 
     def color_refinement(self):
-        Log("Starting color refinement")
+        Log("Backend : Starting color refinement")
 
         iteration_total = 26000
         for iteration in tqdm(range(1, iteration_total + 1)):
@@ -350,7 +351,7 @@ class BackEnd(mp.Process):
                 self.gaussians.optimizer.step()
                 self.gaussians.optimizer.zero_grad(set_to_none=True)
                 self.gaussians.update_learning_rate(iteration)
-        Log("Map refinement done")
+        Log("Backend : Map refinement done")
 
     def push_to_frontend(self, tag=None):
         self.last_sent = 0
@@ -383,7 +384,9 @@ class BackEnd(mp.Process):
                     self.push_to_frontend()
             else:
                 data = self.backend_queue.get()
+                Log(f"Backend : received command: {data[0]}")
                 if data[0] == "stop":
+                    Log("Backend : Stopping")
                     break
                 elif data[0] == "pause":
                     self.pause = True
@@ -393,10 +396,11 @@ class BackEnd(mp.Process):
                     self.color_refinement()
                     self.push_to_frontend()
                 elif data[0] == "init":
+                    Log(f"Backend : Initializing map with frame {data[1]}")
                     cur_frame_idx = data[1]
                     viewpoint = data[2]
                     depth_map = data[3]
-                    Log("Resetting the system")
+                    Log("Backend : Resetting the system")
                     self.reset()
 
                     self.viewpoints[cur_frame_idx] = viewpoint
@@ -407,6 +411,7 @@ class BackEnd(mp.Process):
                     self.push_to_frontend("init")
 
                 elif data[0] == "keyframe":
+                    Log(f"Backend : Adding keyframe {data[1]} to mapping")
                     cur_frame_idx = data[1]
                     viewpoint = data[2]
                     current_window = data[3]
@@ -428,7 +433,7 @@ class BackEnd(mp.Process):
                                 self.config["Training"]["window_size"] - 1
                             )
                             iter_per_kf = 50 if self.live_mode else 300
-                            Log("Performing initial BA for initialization")
+                            Log("Backend : Performing initial BA for initialization")
                         else:
                             iter_per_kf = self.mapping_itr_num
                     for cam_idx in range(len(self.current_window)):
