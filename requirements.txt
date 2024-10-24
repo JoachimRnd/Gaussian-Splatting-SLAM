@@ -20,3 +20,5 @@ PyGLM
 lpips
 rich
 ruff
+lycon #speedup
+lietorch #speedup

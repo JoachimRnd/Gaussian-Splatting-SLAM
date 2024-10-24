@@ -251,7 +251,6 @@ class BaseDataset(torch.utils.data.Dataset):
 class MonocularDataset(BaseDataset):
     def __init__(self, args, path, config):
         super().__init__(args, path, config)
-        print(f"Number of images loaded: {self.num_imgs}")
 
         calibration = config["Dataset"]["Calibration"]
         # Camera prameters
@@ -475,6 +474,7 @@ class SHIRTDataset(MonocularDataset):
         dataset_path = config["Dataset"]["dataset_path"]
         parser = SHIRTParser(dataset_path)
         self.num_imgs = parser.n_img
+        print(f"Number of images loaded: {self.num_imgs}")
         self.color_paths = parser.color_paths
         self.poses = parser.poses
 

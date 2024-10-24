@@ -330,7 +330,7 @@ class FrontEnd(mp.Process):
         toc = torch.cuda.Event(enable_timing=True)
 
         while True:
-            Log(f"Frontend : Processing frame {cur_frame_idx}")
+            #Log(f"Frontend : Processing frame {cur_frame_idx}")
             
             if self.q_vis2main.empty():
                 if self.pause:
