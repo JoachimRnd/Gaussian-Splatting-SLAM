@@ -208,20 +208,36 @@ class FrontEnd(mp.Process):
 
         curr_frame = self.cameras[cur_frame_idx]
         last_kf = self.cameras[last_keyframe_idx]
-        pose_CW = getWorld2View2(curr_frame.R, curr_frame.T)
-        last_kf_CW = getWorld2View2(last_kf.R, last_kf.T)
-        last_kf_WC = torch.linalg.inv(last_kf_CW)
-        dist = torch.norm((pose_CW @ last_kf_WC)[0:3, 3])
+        pose_CW = getWorld2View2(curr_frame.R, curr_frame.T) # kf world coordinates to camera coordinates 
+        # R is a 3x3 rotation matrix, and T is a 3x1 translation vector that define the pose of the camera in the world coordinate system
+        last_kf_CW = getWorld2View2(last_kf.R, last_kf.T) # last key frame world coordinates to camera coordinates
+        last_kf_WC = torch.linalg.inv(last_kf_CW) # world coordinates
+        dist = torch.norm((pose_CW @ last_kf_WC)[0:3, 3]) # distance (translation) between the current frame and the last keyframe
         dist_check = dist > kf_translation * self.median_depth
         dist_check2 = dist > kf_min_translation * self.median_depth
 
+        # overlap check
         union = torch.logical_or(
             cur_frame_visibility_filter, occ_aware_visibility[last_keyframe_idx]
-        ).count_nonzero()
+        ).count_nonzero() # Number of Gaussians visible in either the current frame or the last keyframe
         intersection = torch.logical_and(
             cur_frame_visibility_filter, occ_aware_visibility[last_keyframe_idx]
-        ).count_nonzero()
-        point_ratio_2 = intersection / union
+        ).count_nonzero() # Number of Gaussians visible in both the current frame and the last keyframe
+        point_ratio_2 = intersection / union # overlap ratio
+        
+        # The method returns True if:
+        # Overlap Criterion: The overlap ratio is less than kf_overlap and the translation exceeds kf_min_translation.
+        # Translation Criterion: The translation exceeds kf_translation.
+        overlap_criterion = (point_ratio_2 < kf_overlap and dist_check2) 
+        translation_criterion = dist_check
+        
+        if not(overlap_criterion or translation_criterion):
+            Log(f"Frontend : Frame {cur_frame_idx} is not a keyframe.")
+            if not overlap_criterion:
+                Log(f"Overlap Criterion: {overlap_criterion}")
+            if not translation_criterion:
+                Log(f"Translation Criterion: {translation_criterion}")
+                
         return (point_ratio_2 < kf_overlap and dist_check2) or dist_check
 
     def add_to_window(
@@ -420,7 +436,7 @@ class FrontEnd(mp.Process):
                     curr_visibility,
                     self.occ_aware_visibility,
                 )
-                Log(f"Frontend : Keyframe decision at frame {cur_frame_idx}: {create_kf}")
+                Log(f"Frontend Before check time: Keyframe decision at frame {cur_frame_idx}: {create_kf}")
                 if len(self.current_window) < self.window_size:
                     union = torch.logical_or(
                         curr_visibility, self.occ_aware_visibility[last_keyframe_idx]
@@ -435,6 +451,9 @@ class FrontEnd(mp.Process):
                     )
                 if self.single_thread:
                     create_kf = check_time and create_kf
+                
+                Log(f"Frontend After check time : Keyframe decision at frame {cur_frame_idx}: {create_kf}")
+
                 if create_kf:
                     Log(f"Frontend : Adding keyframe at frame {cur_frame_idx}")
                     self.current_window, removed = self.add_to_window(
