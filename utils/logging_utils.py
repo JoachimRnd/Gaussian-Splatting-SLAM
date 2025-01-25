@@ -4,6 +4,8 @@ _log_styles = {
     "MonoGS": "bold green",
     "GUI": "bold magenta",
     "Eval": "bold red",
+    "Backend": "bold blue",
+    "Frontend": "bold cyan",
 }
 
 

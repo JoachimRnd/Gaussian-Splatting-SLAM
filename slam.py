@@ -8,6 +8,7 @@ from datetime import datetime
 import torch
 import torch.multiprocessing as mp
 import yaml
+import pandas as pd
 from munch import munchify
 
 import wandb
@@ -120,6 +121,8 @@ class SLAM:
         Log("Total FPS", N_frames / (start.elapsed_time(end) * 0.001), tag="Eval")
 
         if self.eval_rendering:
+            metrics = []
+
             self.gaussians = self.frontend.gaussians
             kf_indices = self.frontend.kf_indices
             ATE = eval_ate(
@@ -150,6 +153,15 @@ class SLAM:
                 rendering_result["mean_lpips"],
                 ATE,
                 FPS,
+            )
+            metrics.append(
+                {
+                    "psnr": rendering_result["mean_psnr"],
+                    "ssim": rendering_result["mean_ssim"],
+                    "lpips": rendering_result["mean_lpips"],
+                    "ate": ATE,
+                    "fps": FPS,
+                }
             )
 
             # re-used the frontend queue to retrive the gaussians from the backend.
@@ -184,8 +196,20 @@ class SLAM:
                 ATE,
                 FPS,
             )
+            metrics.append(
+                {
+                    "psnr": rendering_result["mean_psnr"],
+                    "ssim": rendering_result["mean_ssim"],
+                    "lpips": rendering_result["mean_lpips"],
+                    "ate": ATE,
+                    "fps": FPS,
+                }
+            )
             wandb.log({"Metrics": metrics_table})
             save_gaussians(self.gaussians, self.save_dir, "final_after_opt", final=True)
+            self.save_metrics_to_csv(
+                metrics, args.test_name if hasattr(args, "test_name") else None
+            )
 
         backend_queue.put(["stop"])
         backend_process.join()
@@ -198,12 +222,34 @@ class SLAM:
     def run(self):
         pass
 
+    def save_metrics_to_csv(self, metrics, test_name):
+        if test_name is None:
+            return
+        eval_dir = os.path.join("evaluation_metrics")
+        raw_dir = os.path.join(eval_dir, "raw_results")
+        os.makedirs(raw_dir, exist_ok=True)
+
+        data = {
+            "test_name": test_name,
+            "optimization": ["before", "after"],
+            "psnr": [metrics[0]["psnr"], metrics[1]["psnr"]],
+            "ssim": [metrics[0]["ssim"], metrics[1]["ssim"]],
+            "lpips": [metrics[0]["lpips"], metrics[1]["lpips"]],
+            "ate": [metrics[0]["ate"], metrics[1]["ate"]],
+            "fps": [metrics[0]["fps"], metrics[1]["fps"]],
+        }
+
+        df = pd.DataFrame(data)
+        csv_path = os.path.join(raw_dir, f"{test_name}_metrics.csv")
+        df.to_csv(csv_path, index=False)
+
 
 if __name__ == "__main__":
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
     parser.add_argument("--config", type=str)
     parser.add_argument("--eval", action="store_true")
+    parser.add_argument("--test_name", type=str, default=None)
 
     args = parser.parse_args(sys.argv[1:])
 
