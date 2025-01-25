@@ -136,6 +136,8 @@ class BackEnd(mp.Process):
                 self.gaussians.optimizer.zero_grad(set_to_none=True)
 
         self.occ_aware_visibility[cur_frame_idx] = (n_touched > 0).long()
+        # proportion_visible = self.occ_aware_visibility[cur_frame_idx].float().mean().item()
+        # Log({"Frame kf_idx": cur_frame_idx, "Proportion de Gaussians visibles": proportion_visible})
         Log("Backend : Initialized map")
         return render_pkg
 
@@ -164,11 +166,9 @@ class BackEnd(mp.Process):
             radii_acm = []
             n_touched_acm = []
 
-            keyframes_opt = []
 
             for cam_idx in range(len(current_window)):
                 viewpoint = viewpoint_stack[cam_idx]
-                keyframes_opt.append(viewpoint)
                 render_pkg = render(
                     viewpoint, self.gaussians, self.pipeline_params, self.background
                 )
@@ -239,6 +239,8 @@ class BackEnd(mp.Process):
                     kf_idx = current_window[idx]
                     n_touched = n_touched_acm[idx]
                     self.occ_aware_visibility[kf_idx] = (n_touched > 0).long()
+                    # proportion_visible = self.occ_aware_visibility[kf_idx].float().mean().item()
+                    # Log({"Frame kf_idx": kf_idx, "Proportion de Gaussians visibles": proportion_visible})
 
                 # # compute the visibility of the gaussians
                 # # Only prune on the last iteration and when we have full window
@@ -301,7 +303,6 @@ class BackEnd(mp.Process):
                 if (self.iteration_count % self.gaussian_reset) == 0 and (
                     not update_gaussian
                 ):
-                    Log("Backend : Resetting the opacity of non-visible Gaussians")
                     self.gaussians.reset_opacity_nonvisible(visibility_filter_acm)
                     gaussian_split = True
 
@@ -384,9 +385,8 @@ class BackEnd(mp.Process):
                     self.push_to_frontend()
             else:
                 data = self.backend_queue.get()
-                Log(f"Backend : received command: {data[0]}")
+                # Log(f"Backend : received command: {data[0]}")
                 if data[0] == "stop":
-                    Log("Backend : Stopping")
                     break
                 elif data[0] == "pause":
                     self.pause = True
@@ -400,7 +400,6 @@ class BackEnd(mp.Process):
                     cur_frame_idx = data[1]
                     viewpoint = data[2]
                     depth_map = data[3]
-                    Log("Backend : Resetting the system")
                     self.reset()
 
                     self.viewpoints[cur_frame_idx] = viewpoint
@@ -411,7 +410,6 @@ class BackEnd(mp.Process):
                     self.push_to_frontend("init")
 
                 elif data[0] == "keyframe":
-                    Log(f"Backend : Adding keyframe {data[1]} to mapping")
                     cur_frame_idx = data[1]
                     viewpoint = data[2]
                     current_window = data[3]
@@ -433,7 +431,6 @@ class BackEnd(mp.Process):
                                 self.config["Training"]["window_size"] - 1
                             )
                             iter_per_kf = 50 if self.live_mode else 300
-                            Log("Backend : Performing initial BA for initialization")
                         else:
                             iter_per_kf = self.mapping_itr_num
                     for cam_idx in range(len(self.current_window)):

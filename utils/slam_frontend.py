@@ -209,7 +209,6 @@ class FrontEnd(mp.Process):
         curr_frame = self.cameras[cur_frame_idx]
         last_kf = self.cameras[last_keyframe_idx]
         pose_CW = getWorld2View2(curr_frame.R, curr_frame.T) # kf world coordinates to camera coordinates 
-        # R is a 3x3 rotation matrix, and T is a 3x1 translation vector that define the pose of the camera in the world coordinate system
         last_kf_CW = getWorld2View2(last_kf.R, last_kf.T) # last key frame world coordinates to camera coordinates
         last_kf_WC = torch.linalg.inv(last_kf_CW) # world coordinates
         dist = torch.norm((pose_CW @ last_kf_WC)[0:3, 3]) # distance (translation) between the current frame and the last keyframe
@@ -228,15 +227,19 @@ class FrontEnd(mp.Process):
         # The method returns True if:
         # Overlap Criterion: The overlap ratio is less than kf_overlap and the translation exceeds kf_min_translation.
         # Translation Criterion: The translation exceeds kf_translation.
-        overlap_criterion = (point_ratio_2 < kf_overlap and dist_check2) 
-        translation_criterion = dist_check
+        # overlap_criterion = (point_ratio_2 < kf_overlap and dist_check2) 
+        # translation_criterion = dist_check
         
-        if not(overlap_criterion or translation_criterion):
-            Log(f"Frontend : Frame {cur_frame_idx} is not a keyframe.")
-            if not overlap_criterion:
-                Log(f"Overlap Criterion: {overlap_criterion}")
-            if not translation_criterion:
-                Log(f"Translation Criterion: {translation_criterion}")
+        # if not(overlap_criterion or translation_criterion):
+        #     Log(f"Frontend : Frame {cur_frame_idx} is not a keyframe.")
+        #     if not overlap_criterion:
+        #         Log(f"Overlap Criterion: {overlap_criterion}")
+        #         Log(f"Overlap Ratio: {point_ratio_2}")
+        #         Log(f"Union: {union}")
+        #         Log(f"Intersection: {intersection}")
+        #         Log(f"Dist check 2: {dist_check2}")
+        #     if not translation_criterion:
+        #         Log(f"Translation Criterion: {translation_criterion}")
                 
         return (point_ratio_2 < kf_overlap and dist_check2) or dist_check
 
@@ -392,6 +395,13 @@ class FrontEnd(mp.Process):
                 viewpoint = Camera.init_from_dataset(
                     self.dataset, cur_frame_idx, projection_matrix
                 )
+                
+                # Log("Frontend : GT pose for frame", cur_frame_idx)
+                # Log(f"R_gt:\n{viewpoint.R_gt}")
+                # Log(f"T_gt:\n{viewpoint.T_gt}")
+                # Log(f"Depth stats - Min: {viewpoint.depth.min():.3f}, Max: {viewpoint.depth.max():.3f}, Mean: {viewpoint.depth.mean():.3f}")
+                # Log(f"Image stats - Min: {viewpoint.original_image.min():.3f}, Max: {viewpoint.original_image.max():.3f}, Mean: {viewpoint.original_image.mean():.3f}")
+                
                 viewpoint.compute_grad_mask(self.config)
 
                 self.cameras[cur_frame_idx] = viewpoint
@@ -436,7 +446,6 @@ class FrontEnd(mp.Process):
                     curr_visibility,
                     self.occ_aware_visibility,
                 )
-                Log(f"Frontend Before check time: Keyframe decision at frame {cur_frame_idx}: {create_kf}")
                 if len(self.current_window) < self.window_size:
                     union = torch.logical_or(
                         curr_visibility, self.occ_aware_visibility[last_keyframe_idx]
@@ -452,10 +461,8 @@ class FrontEnd(mp.Process):
                 if self.single_thread:
                     create_kf = check_time and create_kf
                 
-                Log(f"Frontend After check time : Keyframe decision at frame {cur_frame_idx}: {create_kf}")
 
                 if create_kf:
-                    Log(f"Frontend : Adding keyframe at frame {cur_frame_idx}")
                     self.current_window, removed = self.add_to_window(
                         cur_frame_idx,
                         curr_visibility,
@@ -477,7 +484,6 @@ class FrontEnd(mp.Process):
                     self.request_keyframe(
                         cur_frame_idx, viewpoint, self.current_window, depth_map
                     )
-                    Log(f"Frontend : Requested mapping for keyframe at frame {cur_frame_idx}")
                 else:
                     self.cleanup(cur_frame_idx)
                 cur_frame_idx += 1

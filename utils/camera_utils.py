@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from gaussian_splatting.utils.graphics_utils import getProjectionMatrix2, getWorld2View2
+from utils.logging_utils import Log
 from utils.slam_utils import image_gradient, image_gradient_mask
 
 
@@ -65,6 +66,12 @@ class Camera(nn.Module):
     @staticmethod
     def init_from_dataset(dataset, idx, projection_matrix):
         gt_color, gt_depth, gt_pose = dataset[idx]
+        # Log(f"Camera utils : GT Pose for frame {idx}:")
+        # Log(f"R_gt:\n{gt_pose[:3,:3]}")
+        # Log(f"T_gt:\n{gt_pose[:3,3]}")
+        # Log(f"Depth stats - Min: {gt_depth.min():.3f}, Max: {gt_depth.max():.3f}, Mean: {gt_depth.mean():.3f}")
+        # Log(f"Image stats - Min: {gt_color.min():.3f}, Max: {gt_color.max():.3f}, Mean: {gt_color.mean():.3f}")
+        
         return Camera(
             idx,
             gt_color,
