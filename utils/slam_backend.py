@@ -142,7 +142,7 @@ class BackEnd(mp.Process):
         return render_pkg
 
     def map(self, current_window, prune=False, iters=1):
-        Log(f"Backend : mapping current window: {current_window}")
+        # Log(f"Backend : mapping current window: {current_window}")
         if len(current_window) == 0:
             return
 
